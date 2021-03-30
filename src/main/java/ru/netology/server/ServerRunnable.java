@@ -81,7 +81,7 @@ public class ServerRunnable implements Runnable {
             ).getBytes());
             Files.copy(filePath, out);
             out.flush();
-
+            socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
