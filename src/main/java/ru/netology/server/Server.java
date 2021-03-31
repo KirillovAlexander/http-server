@@ -4,10 +4,13 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Server {
+    private final Map<String, Map<String, Handler>> handlersMap = new ConcurrentHashMap<>();
     private final int port;
     final ExecutorService threadPool = Executors.newFixedThreadPool(64);
 
@@ -22,7 +25,7 @@ public class Server {
             while (true) {
                 try {
                     final Socket socket = serverSocket.accept();
-                    Runnable serverRunnable = new ServerRunnable(socket, validPaths);
+                    Runnable serverRunnable = new ServerRunnable(socket, validPaths, this);
                     threadPool.submit(serverRunnable);
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -31,6 +34,28 @@ public class Server {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public boolean addHandler(String method, String path, Handler handler) {
+        Map<String, Handler> pathMap = handlersMap.get(method);
+        if (null == pathMap) {
+            pathMap = new ConcurrentHashMap<>();
+            pathMap.put(path, handler);
+            handlersMap.put(method, pathMap);
+            return true;
+        }
+        Handler currentHandler = pathMap.get(path);
+        if (null == currentHandler) {
+            pathMap.put(path, handler);
+            return true;
+        }
+        return false;
+    }
+
+    public Handler getHandler(String method, String path) {
+        Map<String, Handler> pathMap = handlersMap.get(method);
+        if (null == path) return null;
+        return pathMap.get(path);
     }
 }
 

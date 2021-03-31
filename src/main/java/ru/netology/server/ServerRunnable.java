@@ -14,73 +14,37 @@ public class ServerRunnable implements Runnable {
 
     private final Socket socket;
     private final List<String> validPaths;
+    private final Server server;
 
-    public ServerRunnable(Socket socket, List<String> validPaths) {
+    public ServerRunnable(Socket socket, List<String> validPaths, Server server) {
         this.socket = socket;
         this.validPaths = validPaths;
+        this.server = server;
     }
 
     @Override
     public void run() {
         try (final BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-             final BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());) {
-            // read only request line for simplicity
-            // must be in form GET /path HTTP/1.1
+             final BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream())) {
             final String requestLine = in.readLine();
-            final String[] parts = requestLine.split(" ");
+            Request request = new Request();
+            request.setRequestLine(requestLine);
+            String line;
+            while ((line = in.readLine()) != "\r\n") {
+                request.addHeader(line);
+            }
+            StringBuilder sb = new StringBuilder();
+            while ((line = in.readLine()) != null) {
+                sb.append(line);
+            }
+            request.setBody(sb.toString());
 
-            if (parts.length != 3) {
-                // just close socket
+            Handler handler = server.getHandler(request.getMethod(), request.getFirstPath());
+            if (handler == null) {
                 socket.close();
                 return;
             }
-
-            final String path = parts[1];
-            if (!validPaths.contains(path)) {
-                out.write((
-                        "HTTP/1.1 404 Not Found\r\n" +
-                                "Content-Length: 0\r\n" +
-                                "Connection: close\r\n" +
-                                "\r\n"
-                ).getBytes());
-                out.flush();
-                socket.close();
-                return;
-            }
-
-            final Path filePath = Path.of(".", "public", path);
-            final String mimeType = Files.probeContentType(filePath);
-
-            // special case for classic
-            if (path.equals("/classic.html")) {
-                final String template = Files.readString(filePath);
-                final byte[] content = template.replace(
-                        "{time}",
-                        LocalDateTime.now().toString()
-                ).getBytes();
-                out.write((
-                        "HTTP/1.1 200 OK\r\n" +
-                                "Content-Type: " + mimeType + "\r\n" +
-                                "Content-Length: " + content.length + "\r\n" +
-                                "Connection: close\r\n" +
-                                "\r\n"
-                ).getBytes());
-                out.write(content);
-                out.flush();
-                socket.close();
-                return;
-            }
-
-            final long length = Files.size(filePath);
-            out.write((
-                    "HTTP/1.1 200 OK\r\n" +
-                            "Content-Type: " + mimeType + "\r\n" +
-                            "Content-Length: " + length + "\r\n" +
-                            "Connection: close\r\n" +
-                            "\r\n"
-            ).getBytes());
-            Files.copy(filePath, out);
-            out.flush();
+            handler.handle(request, out);
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
