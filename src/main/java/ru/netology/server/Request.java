@@ -1,18 +1,21 @@
 package ru.netology.server;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Request {
     private String method;
     private String path;
     private String version;
-    private List<String> headers;
+    private Map<String, String> headers;
     private String body;
 
     public Request() {
+        this.headers = new ConcurrentHashMap<>();
     }
 
-    public Request(String method, String path, String version, List<String> headers, String body) {
+    public Request(String method, String path, String version, Map<String, String> headers, String body) {
         this.method = method;
         this.path = path;
         this.version = version;
@@ -31,12 +34,21 @@ public class Request {
         final String[] parts = headers.split("\n");
         for (String header: parts
         ) {
-            this.headers.add(header);
+            String[] headerParts = header.split(":");
+            if (headerParts.length == 2) {
+                this.headers.put(headerParts[0], headerParts[1]);
+            }
         }
     }
 
-    public void addHeader(String header) {
-        this.headers.add(header);
+    public boolean addHeader(String header) {
+        String[] headerParts = header.split(":");
+        if (headerParts.length == 2) {
+            this.headers.put(headerParts[0], headerParts[1]);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     public void setBody(String body) {
