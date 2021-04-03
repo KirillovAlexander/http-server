@@ -26,11 +26,14 @@ public class ServerRunnable implements Runnable {
              final BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());) {
             // read only request line for simplicity
             // must be in form GET /path HTTP/1.1
+            System.out.println("Жду сообщения.");
             final String requestLine = in.readLine();
+            System.out.println("Получил сообщение: " + requestLine);
             final String[] parts = requestLine.split(" ");
 
             if (parts.length != 3) {
-                // just close socket
+                System.out.println("Не корректный реквест, отправляю ошибку 400");
+                badRequest(out);
                 socket.close();
                 return;
             }
@@ -85,5 +88,15 @@ public class ServerRunnable implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void badRequest(BufferedOutputStream out) throws IOException {
+        out.write((
+                "HTTP/1.1 400 Bad Request\r\n" +
+                        "Content-Length: 0\r\n" +
+                        "Connection: close\r\n" +
+                        "\r\n"
+        ).getBytes());
+        out.flush();
     }
 }

@@ -21,7 +21,7 @@ public class Server {
         try (final ServerSocket serverSocket = new ServerSocket(port)) {
             while (true) {
                 try {
-                    final Socket socket = serverSocket.accept();
+                    Socket socket = serverSocket.accept();
                     Runnable serverRunnable = new ServerRunnable(socket, validPaths);
                     threadPool.submit(serverRunnable);
                 } catch (IOException e) {
