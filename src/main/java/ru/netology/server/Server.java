@@ -54,8 +54,19 @@ public class Server {
 
     public Handler getHandler(String method, String path) {
         Map<String, Handler> pathMap = handlersMap.get(method);
-        if (null == path) return null;
+        if (null == pathMap) return null;
         return pathMap.get(path);
+    }
+
+    public void printHandlers() {
+        System.out.println("Список добавленных хэндлеров: ");
+        for (Map.Entry<String, Map<String, Handler>> entry : handlersMap.entrySet()) {
+            System.out.print(entry.getKey() + ": ");
+            for (Map.Entry<String, Handler> innerEntry : entry.getValue().entrySet()) {
+                System.out.print(innerEntry.getKey() + "; ");
+            }
+            System.out.println();
+        }
     }
 }
 
